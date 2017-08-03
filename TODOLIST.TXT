@@ -1,0 +1,7 @@
+problem:
+	- tenant & outlet masih bisa melihat dashboard
+	- uninstall/remove data when delete plugin
+	- disable create categories & tag
+	- hide top admin bar (top)
+	- retrieve product by group
+	- refactoring
