@@ -28,7 +28,7 @@ class Multitenant {
 		$this->loader->add_action( 'user_register', $admin, 'GrapUserdata');
 		$this->loader->add_action( 'user_register', $admin, 'GroupingUser');
 		$this->loader->add_action( 'user_new_form', $admin, 'CreateCustomUserAddNew');
-		$this->loader->add_action( 'delete_user', $admin, 'DeleteBinderGroup');
+		$this->loader->add_action( 'delete_user', $admin, 'DeleteUserComponent');
 		$this->loader->add_action( 'pre_get_posts', $admin, 'ShowProductByOwner');
 	}
 

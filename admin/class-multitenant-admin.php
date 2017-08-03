@@ -156,10 +156,11 @@ class Multitenant_Admin {
 			$obligate_group_name = "Tenant";
 			$binder_group_name = $user_meta->user_login;
 			$binder_group_id = $this->createGroup($binder_group_name);
+			update_user_meta($user_id, 'binder_group', $binder_group_id);
 		}
 		else if(in_array("outlet_role", $user_roles)) {
 			$obligate_group_name = "Outlet";
-			update_usermeta($user_id, 'binder_group', $_POST['group-id']);
+			update_user_meta($user_id, 'binder_group', $_POST['group-id']);
 			$user_meta=get_userdata($user_id);
 			$binder_group_id = $user_meta->binder_group;
 		}
@@ -190,31 +191,46 @@ class Multitenant_Admin {
 	public function CreateCustomUserAddNew(){
 ?>
 		<h3>Tenant Group</h3>
+		<p>select this option if you want to create an OUTLET</p>
+		<i>if there is no option to be selected, create a TENANT first.</i><br>
         <select name="group-id">
-        	<?php foreach(Groups_Group::get_group_ids() as $group_id): ?>
-        	<option value="<?php _e($group_id); ?>"><?php _e(Groups_Group::read($group_id)->name); ?></option>
-        	<?php endforeach; ?>
+    	<?php foreach(Groups_Group::get_group_ids() as $group_id): ?>
+        	<?php $group_name = Groups_Group::read($group_id)->name;
+        	if( $group_name != "Tenant" && $group_name != "Outlet" && $group_name != "Registered" ):
+    	 	?>
+        	<option value="<?php _e($group_id); ?>"><?php _e($group_name); ?></option>
+        	<?php endif; ?>
+    	<?php endforeach; ?>
         </select>
 <?php
 	}
 
 	/**
 	 * Delete created group by deleted user
+	 * Invoked after delete user
 	 * @param deleted user id
 	 */
-	public function DeleteBinderGroup( $user_id ){
+	public function DeleteUserComponent( $user_id ){
 		$user_meta = get_userdata($user_id);
 		$user_roles = $user_meta->roles;
 
 		if(in_array("tenant_role",$user_roles)){
+			$member_role = "outlet_role";
 			$tenant_group_name = $user_meta->user_login;
 			if ( $group = Groups_Group::read_by_name( $tenant_group_name ) ) {
-				// update its outlet
-				foreach($group->users as $outlet){
-					update_usermeta($outlet, 'binder_group', 0);
-				}
-				// delete group
+				$this->revokeGroupMember($group->group_id, $member_role);
+				
 				Groups_Group::delete( $group->group_id );
+			}
+		}
+	}
+
+	private function revokeGroupMember($group_id, $member_role){
+		$binder_group = new Groups_Group($group_id);
+		foreach($binder_group->users as $outlet){
+			$member_meta = get_userdata($outlet->ID);
+			if(in_array($member_role,$member_meta->roles)){
+				update_user_meta($outlet->ID, 'binder_group', 0);
 			}
 		}
 	}
@@ -268,14 +284,41 @@ class Multitenant_Admin {
 	}
 
 	public function ShowProductByOwner($query){
-		$user = wp_get_current_user();
-		if(in_array("tenant_role", $user->roles)){
-			$query->set('author', $user->ID);
+		$current_user = wp_get_current_user();
+		if(in_array("tenant_role", $current_user->roles) || in_array("outlet_role", $current_user->roles)){
+			$group_id = get_user_meta($current_user->ID, 'binder_group', true);
+			$user_role = '';
+
+			if(in_array("tenant_role", $current_user->roles)){
+				//$group_id = $user->ID;//var_dump($group_id);
+				$user_role = "tenant_role";
+				//$query->set('author', $user->ID);
+			}
+			if(in_array("outlet_role", $current_user->roles)){
+				$user_role = "outlet_role";
+				//var_dump($group_id);
+				//$query->set('author', $user->ID);
+			}
+			$group = new Groups_Group($group_id);
+			$group_member = $group->users;//var_dump(count($group_member));
+
+			
+			$accepted_user = array();
+			foreach($group_member as $member){
+				//var_dump($member->ID);
+				$member_meta = get_userdata($member->ID);
+				if($user_role=="tenant_role"){
+					if($member->ID == $current_user->ID || (!in_array($user_role, $member_meta->roles))){
+						$accepted_user[] = $member->ID;
+					}
+				}else if($user_role=="outlet_role"){
+					if( $member->ID == $current_user->ID) {
+						$accepted_user[] = $member->ID;
+					}
+				}
+			}
+			$query->set('author__in', $accepted_user );
 		}
-		if(in_array("outlet_role", $user->roles)){
-			$query->set('author', $user->ID);
-		}
-		//print_r($query);
 	}
 
 }

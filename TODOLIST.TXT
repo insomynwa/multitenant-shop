@@ -3,5 +3,10 @@ problem:
 	- uninstall/remove data when delete plugin
 	- disable create categories & tag
 	- hide top admin bar (top)
-	- retrieve product by group
+																			- retrieve product by group (admin)
 	- refactoring
+																			- error when bulk delete tenant & outlet
+	- delete tenant: delete group & delete its outlet & product
+	- remove option group on create tenant (bug for admin only)
+	- cannot update usermeta binder group after assign user to new group (bug for admin only)
+																			- change update_usermeta (deprecated) to update_user_meta
